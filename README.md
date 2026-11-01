@@ -30,15 +30,13 @@ No user accounts or per-user lists, no Walmart API/third-party pricing, no image
 Prerequisites: Docker Engine with Compose plugin (`docker compose`) and an available TCP port.
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/yagl.git
+git clone https://github.com/UsedOak/yagl.git
 cd yagl
 cp .env.example .env
 docker compose up -d --build
 ```
 
 Open `http://YOUR-SERVER-IP:8080`. The first page is already a working blank shopping list; no database or account setup is required.
-
-**For this RC:** replace `YOUR-USERNAME` with the actual owner/repository URL after uploading to GitHub. If testing from a downloaded ZIP, extract it and run the last two commands inside its folder.
 
 ### Behind an existing reverse proxy
 
