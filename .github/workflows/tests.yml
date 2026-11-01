@@ -1,0 +1,37 @@
+name: Tests
+on:
+  push:
+  pull_request:
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install -r requirements.txt pytest httpx
+      - run: pytest -q
+      - run: node --check frontend/app.js
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image exactly as a homelab user would
+        run: docker build -t yagl:smoke .
+      - name: Start container and verify health and UI
+        run: |
+          docker volume create yagl-ci-test
+          docker run -d --name yagl-smoke -p 127.0.0.1:18080:8080 -v yagl-ci-test:/data yagl:smoke
+          for i in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:18080/health >/dev/null; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:18080/health
+          curl -fsS http://127.0.0.1:18080/ | grep -q 'Yet Another Grocery List'
+          curl -fsS http://127.0.0.1:18080/api/state | grep -q 'items'
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f yagl-smoke 2>/dev/null || true
+          docker volume rm yagl-ci-test 2>/dev/null || true

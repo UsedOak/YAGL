@@ -1,0 +1,28 @@
+{
+  "format": "yagl-store-layout",
+  "schema_version": 1,
+  "store": {
+    "name": "DEMO — Example Grocery Store",
+    "location": "Imaginary town (NOT an actual Walmart layout)",
+    "store_code": "DEMO"
+  },
+  "aisles": [
+    {"code": "A20", "description": "Bulk beverages and water", "sort_order": 0},
+    {"code": "A7", "description": "Canned and boxed meals", "sort_order": 1},
+    {"code": "Dairy", "description": "Cold refrigerated section", "sort_order": 2},
+    {"code": "Frozen", "description": "Freezer section near checkout", "sort_order": 3}
+  ],
+  "category_locations": [
+    {"category": "Beverages", "keywords": ["water", "juice", "soda"], "aisle": "A20"},
+    {"category": "Canned Foods", "keywords": ["spaghettios", "canned", "beans"], "aisle": "A7"},
+    {"category": "Boxed Meals", "keywords": ["mac & cheese", "mac and cheese"], "aisle": "A7"},
+    {"category": "Dairy & Eggs", "keywords": ["milk", "cheese", "yogurt"], "aisle": "Dairy"},
+    {"category": "Frozen Foods", "keywords": ["frozen", "ice cream"], "aisle": "Frozen"}
+  ],
+  "product_locations": [
+    {"product": "SpaghettiOs", "aisle": "A7"}
+  ],
+  "product_categories": [
+    {"product": "SpaghettiOs", "category": "Canned Foods"}
+  ]
+}

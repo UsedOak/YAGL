@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c2630">
+  <meta name="description" content="YAGL — Yet Another Grocery List. Self-hosted shared shopping lists with optional store-aware aisle sorting.">
+  <title>YAGL · Yet Another Grocery List</title>
+  <link rel="manifest" href="/assets/manifest.webmanifest">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/" aria-label="YAGL home" id="homeLink">
+        <span class="brand-icon" aria-hidden="true"><svg viewBox="0 0 36 36" fill="none"><path d="M6 13h24l-3 17H9L6 13Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/><path d="m12 13 6-9 6 9M14 20v5m8-5v5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></span>
+        <span class="brand-text"><strong>YAGL<span class="brand-dot">.</span></strong><small>Yet Another Grocery List</small></span>
+      </a>
+      <div class="header-actions">
+        <span class="connection" id="connection"><span class="connection-dot"></span><span id="connectionText">Connecting</span></span>
+        <button class="header-button" id="settingsBtn" type="button" aria-label="Open settings"><span aria-hidden="true">⚙</span><span class="header-label"> Settings</span></button>
+      </div>
+    </div>
+  </header>
+  <div class="page-shell">
+    <div id="notification" role="status" aria-live="polite" class="toast hidden"></div>
+    <section id="shoppingPage">
+      <div class="welcome-row">
+        <div><span class="eyebrow">YOUR SHARED SPACE</span><h1>Shopping list<span class="accent">.</span></h1><p>One list, however you like to shop.</p></div>
+        <div class="store-control"><label for="storePicker">VIEW BY STORE</label><select id="storePicker"><option value="">Simple list · No store</option></select></div>
+      </div>
+      <div class="dashboard">
+        <main class="panel shopping-panel" aria-label="Shopping list">
+          <div class="panel-heading"><div><h2>Things to get</h2><p id="listSummary">Loading your list…</p></div><button id="doneBtn" class="btn btn-primary" disabled type="button">✓ Done</button></div>
+          <div class="progress-track" role="progressbar" aria-label="Items checked" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><div id="progressBar"></div></div>
+          <form id="addForm" class="add-form"><label class="sr-only" for="newItem">Add an item to the list</label><input id="newItem" type="text" maxlength="120" required autocomplete="off" placeholder="What do we need? e.g. SpaghettiOs"><button class="btn btn-primary" type="submit" aria-label="Add item"><span aria-hidden="true">＋</span><span>Add item</span></button></form>
+          <div id="shoppingItems" class="shopping-items"><div class="empty-state">Loading…</div></div>
+          <div class="panel-footer"><span>✓ Checked items stay visible until you press <b>Done</b>.</span><span id="footerCount"></span></div>
+        </main>
+        <aside class="panel route-panel"><div class="route-header"><span class="route-icon" aria-hidden="true">↗</span><h2>Your route</h2></div><p class="muted">Your store choice and view are unique to this browser. List changes sync with everyone.</p><div id="routeSummary" class="route-content"></div><div class="route-bottom"><span class="tiny-dot"></span> No accounts. No tracking. Just groceries.</div></aside>
+      </div>
+    </section>
+    <section id="settingsPage" class="hidden" aria-label="Settings">
+      <div class="welcome-row settings-welcome"><div><span class="eyebrow">MAKE IT YOURS</span><h1>Settings<span class="accent">.</span></h1><p>Everything is optional. The simple list always works.</p></div><button type="button" class="btn btn-outline" id="backBtn">← Back to list</button></div>
+      <div class="settings-layout">
+        <nav class="settings-tabs" aria-label="Settings sections"><button class="tab active" data-tab="stores" type="button">01&nbsp; Stores</button><button class="tab" data-tab="aisles" type="button">02&nbsp; Walking order</button><button class="tab" data-tab="categories" type="button">03&nbsp; Category mapping</button><button class="tab" data-tab="transfer" type="button">04&nbsp; Import & export</button></nav>
+        <div class="panel settings-panel" id="settingsContent"></div>
+      </div>
+    </section>
+    <footer class="app-footer"><span><b>YAGL</b> · Yet Another Grocery List</span><span>Alpha v0.1.0-rc1 · Free to self-host</span></footer>
+  </div>
+  <dialog id="itemDialog" class="modal"><form method="dialog" id="itemEditForm"><div id="itemDialogContents"></div></form></dialog>
+</body>
+</html>
