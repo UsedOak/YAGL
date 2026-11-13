@@ -119,7 +119,9 @@ async def add_item(data: dict = Body(...)):
         if duplicate:
             return JSONResponse(status_code=409, content={"detail": "This item is already on the list", "existing_id": duplicate["id"], "quantity": duplicate["quantity"]})
         category_id = infer_category(db, name)
-        cursor = db.execute("INSERT INTO items(name, quantity, category_id) VALUES (?, ?, ?)", (name, quantity, category_id))
+        known = db.execute("SELECT category_locked FROM catalog WHERE name=? COLLATE NOCASE", (name,)).fetchone()
+        category_locked = known["category_locked"] if known else 0
+        cursor = db.execute("INSERT INTO items(name, quantity, category_id, category_locked) VALUES (?, ?, ?, ?)", (name, quantity, category_id, category_locked))
         db.execute("INSERT OR IGNORE INTO catalog(name, category_id) VALUES (?, ?)", (name, category_id))
         result = {"id": cursor.lastrowid}
     await changed()
@@ -128,9 +130,11 @@ async def add_item(data: dict = Body(...)):
 
 @app.patch("/api/items/{item_id}")
 async def patch_item(item_id: int, data: dict = Body(...)):
-    allowed = {"name", "quantity", "checked", "category_id"}
+    allowed = {"name", "quantity", "quantity_delta", "checked", "category_id"}
     if not data or not set(data).issubset(allowed):
-        fail("Provide item fields: name, quantity, checked, category_id")
+        fail("Provide item fields: name, quantity, quantity_delta, checked, category_id")
+    if "quantity" in data and "quantity_delta" in data:
+        fail("Provide quantity or quantity_delta, not both")
     with transaction() as db:
         item = db.execute("SELECT * FROM items WHERE id=?", (item_id,)).fetchone()
         if not item:
@@ -143,6 +147,11 @@ async def patch_item(item_id: int, data: dict = Body(...)):
                 fail("Another item with that name is already on the list", 409)
         if "quantity" in data:
             fields["quantity"] = positive_int(data["quantity"], "quantity", maximum=9999)
+        if "quantity_delta" in data:
+            delta = data["quantity_delta"]
+            if type(delta) is not int or delta not in (-1, 1):
+                fail("quantity_delta must be -1 or 1")
+            fields["quantity"] = max(1, min(9999, fields["quantity"] + delta))
         if "checked" in data:
             if type(data["checked"]) is not bool:
                 fail("checked must be true or false")

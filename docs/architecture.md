@@ -18,7 +18,7 @@ Frontend:
 
 The server persists `items` once. Each `GET /api/state?store_id=<id>` joins the server list with aisle/category data for the chosen store; items are sorted by explicit route order. The browser sends its own store ID on each fetch and saves its current choice in `localStorage`. Changing one browser's store does not modify a global 'active store'.
 
-WebSocket `/api/live` sends **change notices**, not divergent copies of state; upon receiving notice, clients fetch a fresh snapshot from the authoritative database. A 30-second visible-page poll and focus/visibility refresh help recover from dropped sockets. There is no offline queue or conflict resolution for disconnected editing. Very close simultaneous quantity changes can overwrite one another in this alpha; this is an identified future improvement.
+WebSocket `/api/live` sends **change notices**, not divergent copies of state; upon receiving notice or the socket's initial `ready` message, clients fetch a fresh snapshot from the authoritative database. A 30-second visible-page poll and focus/visibility refresh help recover from dropped sockets. The frontend ignores responses from superseded requests or an older store selection. There is no offline queue or conflict resolution for disconnected editing. Quantity buttons send `quantity_delta` adjustments inside the database write transaction, preserving simultaneous increments and clamping counts to 1-9,999. Absolute quantity writes and other edits to the same field still use the last accepted update.
 
 ## Categories
 
@@ -35,7 +35,7 @@ SQLite uses `foreign_keys=ON`, WAL mode, per-request connections and `BEGIN IMME
 | `GET /health` | Health and version |
 | `GET /api/state?store_id=ID` | Shared list with optional store-sorted view |
 | `POST /api/items` | Add item, reject same-name duplicate with `409` |
-| `PATCH /api/items/ID` | Rename, categorize, change quantity or checked state |
+| `PATCH /api/items/ID` | Rename, categorize, change quantity or checked state; `quantity_delta: 1` or `-1` adjusts the current count (cannot combine with `quantity`) |
 | `DELETE /api/items/ID` | Remove one item |
 | `POST /api/items/clear-completed` | Clear checked items only |
 | `POST/PATCH/DELETE /api/categories` | Category management (`/ID` for modification) |

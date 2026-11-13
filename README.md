@@ -15,8 +15,8 @@ No user accounts. No external product database. No telemetry. No paid API. No ma
 ## Features in this beta
 
 - **Start immediately:** add, edit, check/uncheck, and clear checked items while unchecked items persist.
-- **Quantities:** items start at one (hidden); `+` increases; `−` lowers to one without deleting.
-- **One shared list:** updates reach open browsers live via WebSocket, with periodic resync as fallback.
+- **Quantities:** items start at one (hidden); `+` increases; `-` lowers to one without deleting. Quantity buttons apply changes to the server's current count, so simultaneous taps from different devices are preserved (up to 9,999).
+- **One shared list:** updates reach open browsers live via WebSocket, refresh immediately after reconnection, and periodically resync as a fallback. Older refresh responses cannot overwrite a newer view.
 - **Independent views:** each browser remembers its own selected store while all devices share list items, quantities, and checkmarks.
 - **Any retailer:** configure multiple store profiles, not just Walmart.
 - **Walking order:** move aisles/zones up and down to define a real back-to-front or custom route; not alphanumeric sorting.
@@ -118,6 +118,10 @@ Category rules are deterministic: a previously taught product category wins, fol
 
 **Duplicate items:** adding an exact matching name (case-insensitive) prompts whether to increase its quantity. The beta does not silently create another duplicate.
 
+**Remembered choices:** explicitly setting a product's category to **Not assigned** remains a deliberate choice after clearing and re-adding it, including when you subsequently rename that item.
+
+**Concurrent edits:** quantity buttons and duplicate-item increments use server-side adjustments. Other edits to the same field (such as names or checkmarks) still use the last accepted update. Offline edits are not queued.
+
 ## Export and import
 
 **Settings → Import & export** downloads a `.json` store profile containing the aisle walking order, descriptions, category assignments, product-specific locations, and relevant remembered product categories. It **does not** export your active shopping list.
@@ -169,9 +173,11 @@ This project uses **MIT plus Commons Clause License Condition v1.0**. You may se
 python -m pip install -r requirements.txt pytest httpx
 YAGL_DB_PATH=/tmp/yagl-dev.sqlite3 uvicorn backend.app:app --reload --port 8080
 python -m pytest -q
+node --check frontend/app.js
+node --test tests/frontend.test.cjs
 ```
 
-Tests use isolated temporary databases. The web interface uses plain HTML, CSS, and JS with no build pipeline.
+Backend tests use isolated temporary databases. Frontend regression tests use Node's built-in test runner and controlled network responses to check refresh ordering and reconnect behavior. The web interface uses plain HTML, CSS, and JS with no build pipeline.
 
 ---
 

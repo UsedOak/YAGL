@@ -12,6 +12,7 @@ let retryTimer = null;
 let refreshTimer = null;
 let importPayload = null;
 let toastTimer = null;
+let stateRequest = 0;
 
 function showToast(message, error = false) {
   const el = $('notification'); el.textContent = message;
@@ -32,14 +33,19 @@ async function mutate(path, method, payload) {
 }
 function scheduleRefresh() { clearTimeout(refreshTimer); refreshTimer = setTimeout(() => loadState(), 120); }
 async function loadState() {
+  const request = ++stateRequest;
+  const store = selectedStore;
   try {
-    const response = await api('/api/state' + (selectedStore ? '?store_id=' + encodeURIComponent(selectedStore) : ''));
+    const response = await api('/api/state' + (store ? '?store_id=' + encodeURIComponent(store) : ''));
+    if (request !== stateRequest || store !== selectedStore) return;
     if (selectedStore && !response.stores.some(s => String(s.id) === String(selectedStore))) {
       selectedStore = ''; localStorage.removeItem(selectedStoreKey);
-      currentState = await api('/api/state');
+      return loadState();
     } else currentState = response;
     render();
-  } catch (e) { showToast('Could not load the list: ' + e.message, true); }
+  } catch (e) {
+    if (request === stateRequest && store === selectedStore) showToast('Could not load the list: ' + e.message, true);
+  }
 }
 function connectLive() {
   clearTimeout(retryTimer);
@@ -47,7 +53,7 @@ function connectLive() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
   socket = new WebSocket(protocol + '//' + location.host + '/api/live');
   socket.addEventListener('open', () => setOnline(true));
-  socket.addEventListener('message', event => { try {if (JSON.parse(event.data).type === 'changed') scheduleRefresh();} catch {} });
+  socket.addEventListener('message', event => { try {if (['ready', 'changed'].includes(JSON.parse(event.data).type)) scheduleRefresh();} catch {} });
   socket.addEventListener('close', () => {setOnline(false); retryTimer = setTimeout(connectLive, 3500);});
   socket.addEventListener('error', () => socket.close());
 }
@@ -166,8 +172,7 @@ async function addItem(event) {
   } catch (error) {
     if (error.status === 409 && error.data?.existing_id) {
       if (confirm(`"${name}" is already on your list. Increase its quantity by one?`)) {
-        const existing = currentState?.items.find(x => x.id === error.data.existing_id);
-        try { await mutate(`/api/items/${error.data.existing_id}`, 'PATCH', {quantity: (existing?.quantity || error.data.quantity) + 1, checked: false}); input.value = ''; } catch {}
+        try { await mutate(`/api/items/${error.data.existing_id}`, 'PATCH', {quantity_delta: 1, checked: false}); input.value = ''; } catch {}
       }
     }
   }
@@ -267,8 +272,8 @@ document.addEventListener('submit', async e => {
 document.addEventListener('click', async e => {
   const target = e.target.closest('button'); if (!target) return;
   if (target.dataset.tab) {activeTab=target.dataset.tab;renderSettings();return;}
-  if (target.dataset.increment) {const id=Number(target.dataset.increment),item=currentState.items.find(i=>i.id===id);if(item) {try {await mutate(`/api/items/${id}`, 'PATCH', {quantity:Math.min(item.quantity+1,9999)});}catch {}}}
-  if (target.dataset.decrement) {const id=Number(target.dataset.decrement),item=currentState.items.find(i=>i.id===id);if(item&&item.quantity>1) {try {await mutate(`/api/items/${id}`, 'PATCH', {quantity:item.quantity-1});}catch {}}}
+  if (target.dataset.increment) {try {await mutate(`/api/items/${Number(target.dataset.increment)}`, 'PATCH', {quantity_delta:1});}catch {}}
+  if (target.dataset.decrement) {try {await mutate(`/api/items/${Number(target.dataset.decrement)}`, 'PATCH', {quantity_delta:-1});}catch {}}
   if (target.dataset.editItem) editItem(Number(target.dataset.editItem));
   if (target.dataset.chooseStore) {selectStore(target.dataset.chooseStore);showToast('Store selected for this browser.');}
   if (target.dataset.move) moveAisle(Number(target.dataset.move),Number(target.dataset.direction));

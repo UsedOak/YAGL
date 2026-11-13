@@ -1,4 +1,7 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
+
+import pytest
 
 
 def call_ok(response, expected=200):
@@ -174,3 +177,54 @@ def test_existing_unmapped_item_learns_new_category_rules(client):
     call_ok(client.post('/api/items/clear-completed'))
     call_ok(client.post('/api/items',json={'name':'Special Widgets'}),201)
     assert call_ok(client.get(f'/api/state?store_id={store}'))['items'][0]['aisle_code']=='H5'
+
+
+def test_quantity_changes_from_multiple_devices(client):
+    item = call_ok(client.post('/api/items', json={'name': 'Milk'}), 201)['id']
+    # Both clients can act on the same displayed quantity without losing a tap.
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        responses = list(pool.map(
+            lambda _: client.patch(f'/api/items/{item}', json={'quantity_delta': 1}),
+            range(12)))
+    assert all(response.status_code == 200 for response in responses)
+    assert call_ok(client.get('/api/state'))['items'][0]['quantity'] == 13
+    call_ok(client.patch(f'/api/items/{item}', json={'checked': True}))
+    call_ok(client.patch(f'/api/items/{item}', json={'quantity_delta': 1, 'checked': False}))
+    result = call_ok(client.get('/api/state'))['items'][0]
+    assert result['quantity'] == 14 and result['checked'] == 0
+
+
+def test_quantity_delta_limits_and_notification(client):
+    item = call_ok(client.post('/api/items', json={'name': 'Milk'}), 201)['id']
+    call_ok(client.patch(f'/api/items/{item}', json={'quantity_delta': -1}))
+    assert call_ok(client.get('/api/state'))['items'][0]['quantity'] == 1
+    call_ok(client.patch(f'/api/items/{item}', json={'quantity': 9999}))
+    call_ok(client.patch(f'/api/items/{item}', json={'quantity_delta': 1}))
+    assert call_ok(client.get('/api/state'))['items'][0]['quantity'] == 9999
+    with client.websocket_connect('/api/live') as socket:
+        assert socket.receive_json()['type'] == 'ready'
+        call_ok(client.patch(f'/api/items/{item}', json={'quantity_delta': -1}))
+        assert socket.receive_json()['type'] == 'changed'
+    assert call_ok(client.get('/api/state'))['items'][0]['quantity'] == 9998
+    assert client.patch('/api/items/999', json={'quantity_delta': 1}).status_code == 404
+
+
+@pytest.mark.parametrize('payload', [
+    {'quantity_delta': True}, {'quantity_delta': 1.0}, {'quantity_delta': '1'},
+    {'quantity_delta': None}, {'quantity_delta': 0}, {'quantity_delta': 2},
+    {'quantity_delta': -2}, {'quantity_delta': 1, 'quantity': 3},
+])
+def test_invalid_quantity_delta_does_not_change_item(client, payload):
+    item = call_ok(client.post('/api/items', json={'name': 'Milk'}), 201)['id']
+    assert client.patch(f'/api/items/{item}', json=payload).status_code == 400
+    assert call_ok(client.get('/api/state'))['items'][0]['quantity'] == 1
+
+
+def test_explicit_unassigned_category_survives_readd_and_rename(client):
+    item = call_ok(client.post('/api/items', json={'name': 'Milk'}), 201)['id']
+    call_ok(client.patch(f'/api/items/{item}', json={'category_id': None, 'checked': True}))
+    call_ok(client.post('/api/items/clear-completed'))
+    item = call_ok(client.post('/api/items', json={'name': 'MILK'}), 201)['id']
+    call_ok(client.patch(f'/api/items/{item}', json={'name': 'Whole milk'}))
+    result = call_ok(client.get('/api/state'))['items'][0]
+    assert result['category_id'] is None and result['category_locked'] == 1
